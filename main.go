@@ -270,31 +270,40 @@ func connectToVM() {
 }
 
 func connectToFTP() {
-	var address, username, password string
-	fmt.Print("Enter FTP server address (e.g., ftp_address:21): ")
+	var address, username, password, port string
+	fmt.Print("Enter FTP server address: ")
 	fmt.Scan(&address)
+	fmt.Print("Enter FTP port : ")
+	fmt.Scan(&port)
 	fmt.Print("Enter FTP username: ")
 	fmt.Scan(&username)
 	fmt.Print("Enter FTP password: ")
 	fmt.Scan(&password)
 
-	conn, err := ftp.Dial(address)
+	addressWithPort := address + ":" + port
+
+	conn, err := ftp.Dial(addressWithPort)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to connect to FTP server: %v", err)
 	}
+	defer conn.Quit()
+
 	err = conn.Login(username, password)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to login to FTP server: %v", err)
 	}
 	defer conn.Logout()
 
 	entries, err := conn.List("/")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to list directory: %v", err)
 	}
+
+	fmt.Println("Directory listing:")
 	for _, entry := range entries {
 		fmt.Println(entry.Name)
 	}
+	fmt.Println("Successfully connected to the FTP server and listed the directory.")
 }
 
 func launchWebServer() {
