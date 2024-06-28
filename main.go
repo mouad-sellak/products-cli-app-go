@@ -308,6 +308,7 @@ func connectToFTP() {
 
 func launchWebServer() {
 	router := gin.Default()
+	router.SetTrustedProxies(nil)
 
 	router.LoadHTMLGlob("templates/*")
 	router.Static("/static", "./static")
