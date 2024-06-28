@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -216,37 +217,56 @@ func startHTTPServer() {
 }
 
 func connectToVM() {
-	var address, username, password string
-	fmt.Print("Enter VM address (e.g., vm_address:22): ")
+	var address, username, keyPath string
+	fmt.Print("Enter VM address : ")
 	fmt.Scan(&address)
-	fmt.Print("Enter VM username: ")
+	fmt.Print("Enter VM port : ")
+	var port string
+	fmt.Scan(&port)
+	fmt.Print("Enter VM username : ")
 	fmt.Scan(&username)
-	fmt.Print("Enter VM password: ")
-	fmt.Scan(&password)
+	fmt.Print("Enter path to your private key : ")
+	fmt.Scan(&keyPath)
+
+	addressWithPort := address + ":" + port
+
+	key, err := os.ReadFile(keyPath)
+	if err != nil {
+		log.Fatalf("unable to read private key: %v", err)
+	}
+
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		log.Fatalf("unable to parse private key: %v", err)
+	}
 
 	config := &ssh.ClientConfig{
 		User: username,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
+			ssh.PublicKeys(signer),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	client, err := ssh.Dial("tcp", address, config)
+
+	client, err := ssh.Dial("tcp", addressWithPort, config)
 	if err != nil {
-		log.Fatal("Failed to dial: " + err.Error())
+		log.Fatalf("Failed to dial: %v", err)
 	}
+	defer client.Close()
+
 	session, err := client.NewSession()
 	if err != nil {
-		log.Fatal("Failed to create session: " + err.Error())
+		log.Fatalf("Failed to create session: %v", err)
 	}
 	defer session.Close()
 
 	var b bytes.Buffer
 	session.Stdout = &b
 	if err := session.Run("ls -l"); err != nil {
-		log.Fatal("Failed to run: " + err.Error())
+		log.Fatalf("Failed to run: %v", err)
 	}
 	fmt.Println(b.String())
+	fmt.Println("Successfully connected to the VM and executed the command.")
 }
 
 func connectToFTP() {
